@@ -1,0 +1,171 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+import json,urllib.request
+
+class zabbix_api():
+    def __init__(self):
+      # based url and required header
+      self.url=""
+      self.header = {"Content-Type": "application/json"}
+    # 登录方法，生成key
+    def user_login(self):
+      # auth user and password
+        data = json.dumps(
+        {
+           "jsonrpc": "2.0",
+           "method": "user.login",
+           "params": {
+              "user": "",
+              "password": ""
+          },
+            "id": 0
+        })
+      #create request object
+        request = urllib.request.Request(self.url, data.encode("utf-8"))
+        for key in self.header:
+            request.add_header(key, self.header[key])
+      # auth and get authid
+        try:
+           result = urllib.request.urlopen(request)
+        except urllib.request.URLError as e:
+           print("Auth Failed, Please Check Your Name AndPassword:", e.reason)
+        else:
+           response = json.loads(result.read())
+           result.close()
+           print("Auth Successful. The Auth ID Is:", response['result'])
+    # 获取模版
+    def template_get(self, templateName=''):
+        data = json.dumps(
+        {
+             "jsonrpc": "2.0",
+             "method": "template.get",
+             "params": {
+                "output": "extend",
+                "filter": {
+                   "name": templateName
+                }
+             },
+             # "auth": self.user_login(),
+             "auth": "",
+             "id": 1
+         })
+        request = urllib.request.Request(self.url, data.encode("utf-8"))
+        for key in self.header:
+            request.add_header(key, self.header[key])
+        try:
+            result = urllib.request.urlopen(request)
+        except urllib.request.URLError as e:
+            print("Error as ", e)
+        else:
+            response = json.loads(result.read())
+            # print(response)
+            result.close()
+            for template in response['result']:
+                if len(templateName) == 0:
+                    print("template : \033[31m%s\033[0m\t  id : %s" % (template['name'], template['templateid']))
+                else:
+                    self.templateID = response['result'][0]['templateid']
+                    print("Template Name :  \033[31m%s\033[0m " % templateName)
+                    return response['result'][0]['templateid']
+    #获取主机
+    def host_get(self):
+        data = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "host.get",
+            "params": {
+                "output": ["hostid", "name"],
+                "templateids": self.template_get()
+            },
+            # "auth": self.user_login(),
+            "auth": "",
+            "id": 2
+        })
+        request = urllib.request.Request(self.url, data.encode("utf-8"))
+        for key in self.header:
+            request.add_header(key, self.header[key])
+
+        try:
+            result = urllib.request.urlopen(request)
+        except urllib.request.URLError as e:
+            if hasattr(e, 'reason'):
+                print('We failed to reach a server.')
+                print('Reason: ', e.reason)
+            elif hasattr(e, 'code'):
+                print('The server could not fulfill the request.')
+                print('Error code: ', e.code)
+        else:
+            response = json.loads(result.read())
+            # print(response)
+            for host in response['result']:
+                print("HostID : %s\t HostName : %s\t" % (host['hostid'], host['name']))
+        result.close()
+        # print "主机数量: \033[31m%s\033[0m"%(len(response['result']))
+    # 获取主机IP
+    def host_ip(self):
+        data = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "hostinterface.get",
+            "params": {
+                "output": ["hostid", "ip"],
+                "hostids": self.host_get(),
+                "sortfield": "name"
+            },
+            # "auth": self.user_login(),
+            "auth": "",
+            "id": 3
+        })
+        request = urllib.request.Request(self.url, data.encode("utf-8"))
+        for key in self.header:
+            request.add_header(key, self.header[key])
+        try:
+            result = urllib.request.urlopen(request)
+        except urllib.request.URLError as e:
+            if hasattr(e, 'reason'):
+                print('We failed to reach a server.')
+                print('Reason: ', e.reason)
+            elif hasattr(e, 'code'):
+                print('The server could not fulfill the request.')
+                print('Error code: ', e.code)
+        else:
+            response = json.loads(result.read())
+            # print response
+            for host in response['result']:
+                print("HostID: %s\t IP: %s\t" % (host['hostid'], host['ip']))
+        result.close()
+        print("主机数量: \033[31m%s\033[0m" % (len(response['result'])))
+    # 获取图形
+    def graph_get(self):
+        data = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "graph.get",
+            "params": {
+                "output": "extend",
+                "hostids": self.host_get()
+            },
+            # "auth": self.user_login(),
+            "auth": "",
+            "id": 4
+        })
+        request = urllib.request.Request(self.url, data.encode("utf-8"))
+        for key in self.header:
+            request.add_header(key, self.header[key])
+        try:
+            result = urllib.request.urlopen(request)
+        except urllib.request.URLError as e:
+            if hasattr(e, 'reason'):
+                print('We failed to reach a server.')
+                print('Reason: ', e.reason)
+            elif hasattr(e, 'code'):
+                print('The server could not fulfill the request.')
+                print('Error code: ', e.code)
+        else:
+            response = json.loads(result.read())
+            # print(response)
+            for graph in response['result']:
+                print("GraphID: %s\t Name: %s\t" % (graph['graphid'], graph['name']))
+        result.close()
+if __name__ == "__main__":
+    zabbix=zabbix_api()
+    # zabbix.template_get()
+    # zabbix.host_get()
+    zabbix.graph_get()
